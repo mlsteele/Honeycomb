@@ -1,5 +1,6 @@
 plantTimeout = (ms, cb) -> setTimeout cb, ms
 uuid = require 'node-uuid'
+http = require 'http'
 
 class Pod
   constructor: (@pod_id) ->
@@ -41,6 +42,14 @@ class LocalNode
       console.warn "could not pass message."
 
 
+class HTTPLocalNode extends LocalNode
+  constructor: (@host, @port) ->
+    @server = http.createServer (req, res) ->
+      res.writeHead 200, 'Content-Type': 'text/plain'
+      res.end "okay"
+    @server.listen @port, @host
+
+
 # representation of an external node
 class ForeignNode
   constructor: ->
@@ -51,6 +60,41 @@ class ForeignNode
 
   add_pod_id: (pod_id) ->
     @pod_ids.push pod_id
+
+  fetch_pod_ids: ->
+    throw "not implemented"
+
+
+# representation of an external node
+class HTTPForeignNode extends ForeignNode
+  constructor: (@host, @port) ->
+    super()
+
+  msg_pod: (pod_id, msg) ->
+    options =
+      hostname: @host
+      port: @port
+      path: "/msg_pod"
+      method: 'POST'
+
+    request = http.request options, (res) ->
+      console.log "STATUS: " + res.statusCode
+      console.log "HEADERS: " + JSON.stringify(res.headers)
+
+      res.setEncoding 'utf8'
+
+      res.on "data", (chunk) ->
+        console.log "BODY: " + chunk
+
+    request.on 'error', (e) ->
+      console.log "problem with request: #{e.message}"
+
+    # write data to request body
+    request.write msg
+    request.end()
+
+  fetch_pod_ids: ->
+    throw "not implemented"
 
 
 # local foreign node
@@ -66,19 +110,35 @@ class LocalForeignNode extends ForeignNode
     (@add_pod_id p.pod_id) for p in @local_node.pods
 
 
-some_pod = new Pod uuid.v4()
-console.log "some_pod pod_id: #{some_pod.pod_id}"
-local_node = new LocalNode()
-local_node.add_pod some_pod
 
-other_pod = new Pod uuid.v4()
-console.log "other_pod pod_id: #{other_pod.pod_id}"
-other_node = new LocalNode()
-other_node.add_pod other_pod
+which_thing = 'http'
 
-foreign_node = new LocalForeignNode other_node
-foreign_node.add_local_pod_ids()
+if which_thing is 'local'
+  some_pod = new Pod uuid.v4()
+  console.log "some_pod pod_id: #{some_pod.pod_id}"
+  local_node = new LocalNode()
+  local_node.add_pod some_pod
 
-local_node.add_foreign_node foreign_node
-local_node.msg_pod some_pod.pod_id, 'hello local.'
-local_node.msg_pod other_pod.pod_id, 'hello other.'
+  other_pod = new Pod uuid.v4()
+  console.log "other_pod pod_id: #{other_pod.pod_id}"
+  other_node = new LocalNode()
+  other_node.add_pod other_pod
+
+  foreign_node = new LocalForeignNode other_node
+  foreign_node.add_local_pod_ids()
+
+  local_node.add_foreign_node foreign_node
+  local_node.msg_pod some_pod.pod_id, 'hello local.'
+  local_node.msg_pod other_pod.pod_id, 'hello other.'
+else if which_thing is 'http'
+  some_pod = new Pod uuid.v4()
+  console.log "some_pod pod_id: #{some_pod.pod_id}"
+  local_node = new HTTPLocalNode 'localhost', 8417
+  # local_node.add_pod some_pod
+
+  # foreign_node = new HTTPForeignNode other_node
+  # foreign_node.add_local_pod_ids()
+
+  # local_node.add_foreign_node foreign_node
+  local_node.msg_pod some_pod.pod_id, 'hello local.'
+  # local_node.msg_pod other_pod.pod_id, 'hello other.'
