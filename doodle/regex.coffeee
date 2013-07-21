@@ -1,0 +1,31 @@
+r = /^\/msg_pod\/(.+)/
+
+console.log '/wrong'
+console.log '/wrong'.match r
+console.log ('/wrong'.match r)?[1]
+console.log ('/wrong'.match r)?
+console.log ''
+
+console.log '/wrong/banglor'
+console.log '/wrong/banglor'.match r
+console.log ('/wrong/banglor'.match r)?[1]
+console.log ('/wrong/banglor'.match r)?
+console.log ''
+
+console.log '/msg_pod/foodles'
+console.log '/msg_pod/foodles'.match r
+console.log ('/msg_pod/foodles'.match r)?[1]
+console.log ('/msg_pod/foodles'.match r)?
+console.log ''
+
+console.log '/pre/msg_pod/foodles'
+console.log '/pre/msg_pod/foodles'.match r
+console.log ('/pre/msg_pod/foodles'.match r)?[1]
+console.log ('/pre/msg_pod/foodles'.match r)?
+console.log ''
+
+console.log '/msg_pod/'
+console.log '/msg_pod/'.match r
+console.log ('/msg_pod/'.match r)?[1]
+console.log ('/msg_pod/'.match r)?
+console.log ''

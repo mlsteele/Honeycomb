@@ -53,7 +53,7 @@ describe 'HTTPLocalNode', ->
 
       runs => @ln.server.close()
 
-    it 'and receives a requests to! send messages to pods', ->
+    it 'and receives a requests to send messages to pods', ->
       latch = false
 
       spyOn @ln, 'msg_pod'

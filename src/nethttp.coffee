@@ -1,4 +1,5 @@
 http = require 'http'
+url_parse = (require 'url').parse
 {LocalNode, ForeignNode} = require './netbase'
 
 class HTTPLocalNode extends LocalNode
@@ -6,7 +7,7 @@ class HTTPLocalNode extends LocalNode
   constructor: (@host, @port) ->
     super()
 
-    @server = http.createServer (req, res) ->
+    @server = http.createServer (req, res) =>
       @_handle_request req, res
 
   listen: (cb) ->
@@ -21,12 +22,21 @@ class HTTPLocalNode extends LocalNode
         return res.end "okay"
 
     else if req.method is 'POST'
-      if url.pathname is '/msg_pod'
-        res.writeHead 200, 'Content-Type': 'text/plain'
-        return res.end "okay"
+      msg_pod_regex = /^\/msg_pod\/(.+)/
+      target_pod_id = (url.pathname.match msg_pod_regex)?[1]
+      if target_pod_id
+        full_body = ""
+        req.on 'data', (chunk) =>
+          full_body += chunk.toString()
+        req.on 'end', =>
+          @msg_pod target_pod_id, full_body
+          res.writeHead 200, 'Content-Type': 'text/plain'
+          res.end "message sent."
+        return
 
-    # default 404
-    res.writeHead 404, 'Content-Type': 'text/plain'
+
+    # default 500
+    res.writeHead 500, 'Content-Type': 'text/plain'
     return res.end "path not found"
 
 # representation of an external node
