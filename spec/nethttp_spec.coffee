@@ -2,9 +2,12 @@ http = require 'http'
 Pod = require '../src/pod'
 {HTTPLocalNode, HTTPForeignNode} = require '../src/nethttp'
 
+TESTING_PORT = 8087
+
 describe 'HTTPLocalNode', ->
+
   it 'inherits the ability to hold local pods', ->
-    @ln = new HTTPLocalNode 'localhost', 8049
+    @ln = new HTTPLocalNode 'localhost', TESTING_PORT
     expect(@ln.pods.length).toEqual 0
     pod = new Pod
     @ln.add_pod pod
@@ -18,7 +21,7 @@ describe 'HTTPLocalNode', ->
     spyOn(@, 'callback').andCallThrough()
 
     runs =>
-      @ln = new HTTPLocalNode 'localhost', 8049
+      @ln = new HTTPLocalNode 'localhost', TESTING_PORT
       @ln.listen @callback
 
     waitsFor => wait_for_this
@@ -27,7 +30,7 @@ describe 'HTTPLocalNode', ->
 
   describe 'listens over http', ->
     beforeEach ->
-      @port = 8049
+      @port = TESTING_PORT
       @ln = new HTTPLocalNode 'localhost', @port
       @pod = new Pod
       @ln.add_pod @pod
@@ -76,3 +79,33 @@ describe 'HTTPLocalNode', ->
       runs =>
         @ln.server.close()
         expect(@ln.msg_pod).toHaveBeenCalledWith @pod.pod_id, 'test message'
+
+
+describe 'HTTPForeignNode', ->
+  it 'remembers what pod_ids it knows about.', ->
+    fn = new HTTPForeignNode
+    pod = new Pod
+    fn.add_pod_id pod.pod_id
+    expect(fn.pod_ids).toContain pod.pod_id
+
+  it 'can tell the target to msg a pod.', ->
+    ln = new HTTPLocalNode 'localhost', TESTING_PORT
+    fn = new HTTPForeignNode 'localhost', TESTING_PORT
+    pod = new Pod
+    ln.add_pod pod
+    fn.add_pod_id pod.pod_id
+
+    spyOn ln, 'msg_pod'
+
+    latch = false
+
+    runs => ln.listen =>
+      fn.msg_pod pod.pod_id, 'test message'
+      # TODO race condition?
+      latch = true
+
+    waitsFor => latch
+
+    runs =>
+      expect(ln.msg_pod).toHaveBeenCalledWith pod.pod_id, 'test message'
+      ln.server.close()

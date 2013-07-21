@@ -42,7 +42,7 @@ class HTTPForeignNode extends ForeignNode
     options =
       hostname: @host
       port: @port
-      path: "/msg_pod"
+      path: "/msg_pod/#{pod_id}"
       method: 'POST'
 
     request = http.request options, (res) ->
