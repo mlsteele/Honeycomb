@@ -18,6 +18,50 @@ class HTTPLocalNode extends LocalNode
   listen: (cb) ->
     @server.listen @port, @host, cb
 
+  # Start a TCP server for issuing a small set of commands to the node.
+  # Not tremendously secure.
+  listen_repl: (port, host) ->
+    net = require 'net'
+    repl = require 'repl'
+
+    repl_server = net.createServer (socket) =>
+      help_text = """
+        \nHTTPLocalNode remote control
+        \nUsage:
+          help                    - display this help
+          info                    - info about this node
+          add IP:PORT             - add a remote http node
+          msg pod_id message body - message a pod\n\n
+      """
+
+      socket.write help_text
+
+      repl.start
+        prompt: "HTTPLocalNode> "
+        input: socket
+        output: socket
+        ignoreUndefined: true
+        eval: (cmd, context, filename, callback) =>
+          response = undefined
+          if cmd.match /help/
+            socket.write help_text
+          else if cmd.match /info/
+            socket.write "this is an HTTPLocalNode at #{@host}:#{@port}\n"
+            socket.write "with a pod #{pod.pod_id}\n" for pod in @pods
+          else if cmd.match /add/
+            socket.write "'add' not implemented.\n"
+          else if cmd.match /msg/
+            match = cmd.match /msg (.*) (.*)/
+            console.log cmd
+            console.log match
+            [x, pod_id, msg] = match
+            response = "sending to #{pod_id} message: '#{msg}'"
+            @msg_pod pod_id, msg
+            socket.write "ok.\n"
+          callback null, response
+
+    repl_server.listen port, host
+
   _setup_app: ->
     @app = express()
     @app.use express.bodyParser()
