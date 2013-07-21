@@ -28,7 +28,7 @@ class HTTPLocalNode extends LocalNode
       req.on 'data', (chunk) -> req.raw_body += chunk
       req.on 'end', next
 
-    @app.get '/check', =>
+    @app.get '/check', (req, res) =>
       res.send 200
 
     @app.post '/msg_pod/:pod_id', bufferMiddleware, (req, res) =>

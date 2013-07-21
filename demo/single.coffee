@@ -1,4 +1,4 @@
-Pod = require './src/pod'
+Pod = require '../src/pod'
 {HTTPLocalNode} = require './src/nethttp'
 
 ln = new HTTPLocalNode 8049, 'localhost'

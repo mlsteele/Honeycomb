@@ -1,5 +1,5 @@
-Pod = require './src/pod'
-{HTTPLocalNode, HTTPForeignNode} = require './src/nethttp'
+Pod = require '../src/pod'
+{HTTPLocalNode, HTTPForeignNode} = require '../src/nethttp'
 
 HOSTS = ['localhost', 'localhost']
 PORTS = [8045, 8046]
