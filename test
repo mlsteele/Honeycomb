@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+jasmine-node --coffee --noStack --autotest spec
+# jasmine-node --coffee --autotest spec
