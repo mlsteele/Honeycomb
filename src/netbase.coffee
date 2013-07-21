@@ -29,7 +29,7 @@ class LocalNode
         console.log "found in foreign"
         return foreign_node.msg_pod foreign_pod_id, msg
 
-    console.warn "could not pass message."
+    console.warn "could not pass message to #{pod_id}."
 
 
 # representation of an external node

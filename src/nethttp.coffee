@@ -1,5 +1,5 @@
 http = require 'http'
-url_parse = (require 'url').parse
+express = require 'express'
 {LocalNode, ForeignNode} = require './netbase'
 
 class HTTPLocalNode extends LocalNode
@@ -7,37 +7,31 @@ class HTTPLocalNode extends LocalNode
   constructor: (@host, @port) ->
     super()
 
-    @server = http.createServer (req, res) =>
-      @_handle_request req, res
+    @_setup_app()
+    @server = http.createServer @app
 
   listen: (cb) ->
     @server.listen @port, @host, cb
 
-  _handle_request: (req, res) ->
-    url = (url_parse req.url)
+  _setup_app: ->
+    @app = express()
+    @app.use express.bodyParser()
 
-    if req.method is 'GET'
-      if url.pathname is '/'
-        res.writeHead 200, 'Content-Type': 'text/plain'
-        return res.end "okay"
+    # from https://gist.github.com/shesek/4651267
+    bufferMiddleware = (req, res, next) ->
+      req.raw_body = ""
+      req.on 'data', (chunk) -> req.raw_body += chunk
+      req.on 'end', next
 
-    else if req.method is 'POST'
-      msg_pod_regex = /^\/msg_pod\/(.+)/
-      target_pod_id = (url.pathname.match msg_pod_regex)?[1]
-      if target_pod_id
-        full_body = ""
-        req.on 'data', (chunk) =>
-          full_body += chunk.toString()
-        req.on 'end', =>
-          @msg_pod target_pod_id, full_body
-          res.writeHead 200, 'Content-Type': 'text/plain'
-          res.end "message sent."
-        return
+    @app.get '/check', =>
+      res.send 200
 
+    @app.post '/msg_pod/:pod_id', bufferMiddleware, (req, res) =>
+      target_pod_id = req.params.pod_id
+      msg = req.raw_body
+      @msg_pod target_pod_id, msg
+      res.send "message sent."
 
-    # default 500
-    res.writeHead 500, 'Content-Type': 'text/plain'
-    return res.end "path not found"
 
 # representation of an external node
 class HTTPForeignNode extends ForeignNode
