@@ -28,7 +28,7 @@ describe 'LocalNode', ->
     fn = new ForeignNode
     @ln.add_foreign_node fn
     foreign_pod = new Pod
-    fn.add_pod_id foreign_pod.pod_id
+    fn.pods_info[foreign_pod.pod_id] = dummy: true
     spyOn fn, 'msg_pod'
     @ln.msg_pod foreign_pod.pod_id, 'test_message'
     expect(fn.msg_pod).toHaveBeenCalledWith foreign_pod.pod_id, 'test_message'

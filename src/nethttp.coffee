@@ -75,6 +75,13 @@ class HTTPLocalNode extends LocalNode
     @app.get '/check', (req, res) =>
       res.send 200
 
+    @app.get '/internode/pods_info', (req, res) =>
+      res_data = {}
+      for pod in @pods
+        res_data[pod.pod_id] = local: true
+
+      res.json res_data
+
     @app.post '/msg_pod/:pod_id', bufferMiddleware, (req, res) =>
       target_pod_id = req.params.pod_id
       msg = req.raw_body
@@ -92,6 +99,8 @@ class HTTPForeignNode extends ForeignNode
 
     super()
 
+  # send HTTP request to foreign node
+  # TODO refactor for nicer request
   msg_pod: (pod_id, msg) ->
     options =
       hostname: @host
@@ -100,23 +109,46 @@ class HTTPForeignNode extends ForeignNode
       method: 'POST'
 
     request = http.request options, (res) ->
+      console.log "recvd response after POSTing to /msg_pod"
       console.log "STATUS: " + res.statusCode
       console.log "HEADERS: " + JSON.stringify(res.headers)
-
-      res.setEncoding 'utf8'
-
+      # res.setEncoding 'utf8'
       res.on "data", (chunk) ->
         console.log "BODY: " + chunk
 
     request.on 'error', (e) ->
-      console.log "problem with request: #{e.message}"
+      console.warn "problem with POSTing to /msg_pod"
+      console.warn "#{e.message}"
 
-    # write data to request body
-    request.write msg
+    request.end msg
+
+  # ask foreign node what is knows about.
+  # TODO refactor for nicer request
+  update: (cb) ->
+    options =
+      hostname: @host
+      port: @port
+      path: "/internode/pods_info"
+      method: 'GET'
+
+    request = http.request options, (res) =>
+      console.log "recvd response after GETting to /internode/pods_info"
+      console.log "STATUS: " + res.statusCode
+      console.log "HEADERS: " + JSON.stringify(res.headers)
+      # res.setEncoding 'utf8'
+
+      # buffer full response body
+      full_body = ""
+      res.on "data", (chunk) -> full_body += chunk
+      res.on "end", =>
+        @pods_info = JSON.parse full_body
+        cb?()
+
+    request.on 'error', (e) ->
+      console.warn "problem with GETting to /internode/pods_info"
+      console.warn "#{e.message}"
+
     request.end()
-
-  fetch_pod_ids: ->
-    throw "not implemented"
 
 
 module.exports =

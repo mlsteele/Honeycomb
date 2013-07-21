@@ -82,18 +82,28 @@ describe 'HTTPLocalNode', ->
 
 
 describe 'HTTPForeignNode', ->
-  it 'remembers what pod_ids it knows about.', ->
+  it 'asks what pods it knows about.', ->
+    ln = new HTTPLocalNode TESTING_PORT, 'localhost'
     fn = new HTTPForeignNode TESTING_PORT, 'localhost'
     pod = new Pod
-    fn.add_pod_id pod.pod_id
-    expect(fn.pod_ids).toContain pod.pod_id
+    ln.add_pod pod
+
+    latch = false
+    runs => ln.listen => fn.update => latch = true
+    waitsFor => latch
+    runs =>
+      ln.server.close()
+      console.log "pods_info: #{fn.pods_info}"
+      console.log "pods_info: #{pod.pod_id}"
+      console.log "pods_info: #{fn.pods_info[pod.pod_id]}"
+      expect(fn.pods_info[pod.pod_id]).toBeDefined()
 
   it 'can tell the target to msg a pod.', ->
     ln = new HTTPLocalNode TESTING_PORT, 'localhost'
     fn = new HTTPForeignNode TESTING_PORT, 'localhost'
     pod = new Pod
     ln.add_pod pod
-    fn.add_pod_id pod.pod_id
+    fn.pods_info[pod.pod_id] = local: true
 
     spyOn ln, 'msg_pod'
 
@@ -107,5 +117,5 @@ describe 'HTTPForeignNode', ->
     waitsFor => latch
 
     runs =>
-      expect(ln.msg_pod).toHaveBeenCalledWith pod.pod_id, 'test message'
       ln.server.close()
+      expect(ln.msg_pod).toHaveBeenCalledWith pod.pod_id, 'test message'

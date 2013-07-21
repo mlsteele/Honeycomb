@@ -1,8 +1,16 @@
-{plantTimeout} = require './helpers'
+# netbase.coffee
+#
+# Distributed network message passing.
+# Messages are not guaranteed delivery.
+
+# uuid = require 'node-uuid'
 http = require 'http'
+{plantTimeout} = require './helpers'
+
 
 class LocalNode
   constructor: ->
+    # @node_id = "node:#{uuid.v4()}"
     @pods = []
     # list of ForeignNode's
     @foreign_nodes = []
@@ -19,32 +27,45 @@ class LocalNode
     # search in this node
     local_pod = (p for p in @pods when p.pod_id is pod_id)[0]
     if local_pod
-      console.log "found in local"
+      console.log "found pod_id in local node"
       return local_pod.recv_msg msg
 
-    # search in friend nodes
+    # search in foreign nodes
     for foreign_node in @foreign_nodes
-      foreign_pod_id = (fp_id for fp_id in foreign_node.pod_ids when fp_id is pod_id)[0]
+      foreign_pod_id = (fp_id for fp_id of foreign_node.pods_info when fp_id is pod_id)[0]
       if foreign_pod_id
-        console.log "found in foreign"
+        console.log "found pod_id in foreign node"
+        # only try the first match
         return foreign_node.msg_pod foreign_pod_id, msg
 
     console.warn "could not pass message to #{pod_id}."
 
 
 # representation of an external node
+# abstract base class
 class ForeignNode
   constructor: ->
-    @pod_ids = []
+
+    # @pods_info is a mapping from pod_id's to information on how the pod is related
+    # to this node.
+    #
+    # A pod_id will only be a key in @pods_info if the foreign node knows
+    # something about it.
+    #
+    # Keys for each entry can be one of
+    # * `dummy` dummy for testing (possible value: true)
+    # * `local` pod connected locally to the pod (possible value: true)
+    @pods_info = {}
 
   msg_pod: (pod_id, msg) ->
-    throw "not implemented"
+    throw new Error "ForeignNode.msg_pod must be overridden."
 
   add_pod_id: (pod_id) ->
-    @pod_ids.push pod_id
+    throw new Error "ForeignNode.add_pod_id must be overridden."
 
-  fetch_pod_ids: ->
-    throw "not implemented"
+  # update the representation of what the foreign node knows.
+  update: ->
+    throw new Error "ForeignNode.update must be overridden."
 
 
 # local foreign node
