@@ -4,9 +4,12 @@ express = require 'express'
 
 class HTTPLocalNode extends LocalNode
   # * `cb` is called after the server initializes.
-  constructor: (@host, @port) ->
-    unless @host? and @port?
-      throw new Error "Missing argument for constructor."
+  constructor: (@port, @host) ->
+    unless @port?
+      throw new Error "Missing port argument for constructor."
+    unless typeof @port is 'number'
+      throw new Error "Bad port #{@port}"
+
     super()
 
     @_setup_app()
@@ -37,9 +40,12 @@ class HTTPLocalNode extends LocalNode
 
 # representation of an external node
 class HTTPForeignNode extends ForeignNode
-  constructor: (@host, @port) ->
-    unless @host? and @port?
-      throw new Error "Missing argument for constructor."
+  constructor: (@port, @host) ->
+    unless @port?
+      throw new Error "Missing port argument for constructor."
+    unless typeof @port is 'number'
+      throw new Error "Bad port #{@port}"
+
     super()
 
   msg_pod: (pod_id, msg) ->

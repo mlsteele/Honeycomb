@@ -1,7 +1,7 @@
 Pod = require './src/pod'
 {HTTPLocalNode} = require './src/nethttp'
 
-ln = new HTTPLocalNode 'localhost', 8049
+ln = new HTTPLocalNode 8049, 'localhost'
 local_pod = new Pod
 console.log local_pod.pod_id
 ln.add_pod local_pod

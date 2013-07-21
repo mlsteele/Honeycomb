@@ -7,7 +7,7 @@ TESTING_PORT = 8087
 describe 'HTTPLocalNode', ->
 
   it 'inherits the ability to hold local pods', ->
-    @ln = new HTTPLocalNode 'localhost', TESTING_PORT
+    @ln = new HTTPLocalNode TESTING_PORT, 'localhost'
     expect(@ln.pods.length).toEqual 0
     pod = new Pod
     @ln.add_pod pod
@@ -21,7 +21,7 @@ describe 'HTTPLocalNode', ->
     spyOn(@, 'callback').andCallThrough()
 
     runs =>
-      @ln = new HTTPLocalNode 'localhost', TESTING_PORT
+      @ln = new HTTPLocalNode TESTING_PORT, 'localhost'
       @ln.listen @callback
 
     waitsFor => wait_for_this
@@ -31,7 +31,7 @@ describe 'HTTPLocalNode', ->
   describe 'listens over http', ->
     beforeEach ->
       @port = TESTING_PORT
-      @ln = new HTTPLocalNode 'localhost', @port
+      @ln = new HTTPLocalNode @port, 'localhost'
       @pod = new Pod
       @ln.add_pod @pod
       expect(@ln.pods).toContain @pod
@@ -83,14 +83,14 @@ describe 'HTTPLocalNode', ->
 
 describe 'HTTPForeignNode', ->
   it 'remembers what pod_ids it knows about.', ->
-    fn = new HTTPForeignNode
+    fn = new HTTPForeignNode TESTING_PORT, 'localhost'
     pod = new Pod
     fn.add_pod_id pod.pod_id
     expect(fn.pod_ids).toContain pod.pod_id
 
   it 'can tell the target to msg a pod.', ->
-    ln = new HTTPLocalNode 'localhost', TESTING_PORT
-    fn = new HTTPForeignNode 'localhost', TESTING_PORT
+    ln = new HTTPLocalNode TESTING_PORT, 'localhost'
+    fn = new HTTPForeignNode TESTING_PORT, 'localhost'
     pod = new Pod
     ln.add_pod pod
     fn.add_pod_id pod.pod_id
