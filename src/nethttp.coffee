@@ -17,6 +17,7 @@ class HTTPLocalNode extends LocalNode
     @server = http.createServer @app
 
   listen: (cb) ->
+    logger.debug "HTTPLocalNode listening on #{@host}:#{@port}"
     @server.listen @port, @host, cb
 
   # Start a TCP server for issuing a small set of commands to the node.
@@ -66,7 +67,7 @@ class HTTPLocalNode extends LocalNode
     @app.use express.bodyParser()
 
     # from https://gist.github.com/shesek/4651267
-    bufferMiddleware = (req, res, next) ->
+    rawBufferMiddleware = (req, res, next) ->
       req.raw_body = ""
       req.on 'data', (chunk) -> req.raw_body += chunk
       req.on 'end', next
@@ -74,6 +75,8 @@ class HTTPLocalNode extends LocalNode
     @app.get '/check', (req, res) =>
       res.send 200
 
+    # another asks what this node
+    # knows about pods
     @app.get '/internode/pods_info', (req, res) =>
       res_data = {}
       for pod in @pods
@@ -81,7 +84,21 @@ class HTTPLocalNode extends LocalNode
 
       res.json res_data
 
-    @app.post '/msg_pod/:pod_id', bufferMiddleware, (req, res) =>
+    # another node publishes its existance
+    @app.post '/internode/publish_node', (req, res) =>
+      logger.debug "recieved publish_node request"
+      foreign_host = req.connection.remoteAddress
+      foreign_port = req.connection.remotePort
+      logger.debug "publish_node request from #{foreign_host}:#{foreign_port}"
+
+      # TODO deduplicate
+      fn = new HTTPForeignNode foreign_host, foreign_port
+      @add_foreign_node fn
+      fn.update()
+
+      res.send 200
+
+    @app.post '/msg_pod/:pod_id', rawBufferMiddleware, (req, res) =>
       target_pod_id = req.params.pod_id
       msg = req.raw_body
       @msg_pod target_pod_id, msg
@@ -98,7 +115,7 @@ class HTTPForeignNode extends ForeignNode
 
     super()
 
-  # send HTTP request to foreign node
+  # send message to foreign pod
   # TODO refactor for nicer request
   msg_pod: (pod_id, msg) ->
     options =
@@ -121,8 +138,7 @@ class HTTPForeignNode extends ForeignNode
 
     request.end msg
 
-  # ask foreign node what is knows about.
-  # TODO refactor for nicer request
+  # query the foreign node about foreign pods.
   update: (cb) ->
     options =
       hostname: @host
@@ -145,6 +161,26 @@ class HTTPForeignNode extends ForeignNode
 
     request.on 'error', (e) ->
       logger.error "problem with GETting to /internode/pods_info"
+      logger.error "#{e.message}"
+
+    request.end()
+
+  # publish to the foreign node the existance of this local node
+  publish: ->
+    options =
+      hostname: @host
+      port: @port
+      path: "/internode/publish_node"
+      method: 'POST'
+
+    request = http.request options, (res) =>
+      logger.debug "recvd response after POSTing to /internode/publish_node"
+      logger.debug "STATUS: " + res.statusCode
+      logger.debug "HEADERS: " + JSON.stringify(res.headers)
+      # res.setEncoding 'utf8'
+
+    request.on 'error', (e) ->
+      logger.error "problem with POSTting to /internode/publish_node"
       logger.error "#{e.message}"
 
     request.end()
