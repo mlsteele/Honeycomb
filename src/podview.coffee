@@ -1,16 +1,21 @@
 http = require 'http'
 express = require 'express'
+logger = require './logger'
 
 class HTTPPodView
   constructor: (@pod) ->
     @_setup_app()
     @server = http.createServer @app
 
+  attach_node: (@local_node) ->
+    logger.debug "HTTPPodView attaching local node."
+
   listen: (@port, @host) ->
     unless typeof @port is 'number'
       throw new Error "Bad port #{@port}"
 
-    @server.listen @port, @host
+    @server.listen @port, @host, =>
+      logger.debug "HTTPPodView listening on #{@host}:#{@port}"
 
   _setup_app: ->
     @app = express()
@@ -39,6 +44,30 @@ class HTTPPodView
       for msg in @pod.messages
         html += "<p>#{msg}</p>"
       res.send html
+
+    @app.get '/send', (req, res) =>
+      html = """
+      <h1>Send a message.</h1>
+      <form name="input" action="/api/msg_pod" method="post">
+          recipient pod id: <input type="text" name="pod_id"><br>
+          message: <textarea name="msg_body"></textarea><br>
+          <input type="submit" value="Send">
+      </form>
+      """
+      res.send html
+
+    @app.post '/api/msg_pod', (req, res) =>
+      unless @local_node?
+        logger.warn "trying to send message without local node"
+        return res.send 500, "no local_node"
+
+      unless req.body.pod_id? and req.body.msg_body?
+        logger.debug "received invalid post request to /api/msg_pod"
+        return res.send 400, "missing post parameters"
+
+      logger.debug "pod view sending message."
+      @local_node.msg_pod req.body.pod_id.trim(), req.body.msg_body
+      res.send 200, "message passed."
 
 
 module.exports =

@@ -4,6 +4,7 @@ logger = require './logger'
 class Pod
   constructor: ->
     @pod_id = "pod:#{uuid.v4()}"
+    logger.debug "created pod@#{@pod_id}"
     @messages = []
 
   recv_msg: (msg) ->

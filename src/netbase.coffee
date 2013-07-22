@@ -37,7 +37,7 @@ class LocalNode
         # only try the first match
         return foreign_node.msg_pod foreign_pod_id, msg
 
-    logger.warn "could not pass message to #{pod_id}."
+    logger.warn "could not pass message to pod@#{pod_id}."
 
 
 # representation of an external node
