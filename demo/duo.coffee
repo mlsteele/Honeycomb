@@ -13,7 +13,7 @@ do ->
   ln.add_pod pods[0]
   logger.info "added pod #{pods[0].pod_id}"
 
-  fn = new HTTPForeignNode PORTS[1], HOSTS[1]
+  fn = new HTTPForeignNode HOSTS[1], PORTS[1]
   ln.add_foreign_node fn
   plantTimeout 500, ->
     fn.update()
@@ -26,7 +26,7 @@ do ->
   ln.add_pod pods[1]
   logger.info "added pod #{pods[1].pod_id}"
 
-  fn = new HTTPForeignNode PORTS[0], HOSTS[0]
+  fn = new HTTPForeignNode HOSTS[0], PORTS[0]
   ln.add_foreign_node fn
 
   ln.listen -> logger.info "http node listening on #{ln.host}:#{ln.port}"

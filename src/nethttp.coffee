@@ -90,9 +90,9 @@ class HTTPLocalNode extends LocalNode
 
 # representation of an external node
 class HTTPForeignNode extends ForeignNode
-  constructor: (@port, @host) ->
-    unless @port?
-      throw new Error "Missing port argument for constructor."
+  constructor: (@host, @port) ->
+    unless @host? and @port?
+      throw new Error "Missing host or port argument to constructor."
     unless typeof @port is 'number'
       throw new Error "Bad port #{@port}"
 
