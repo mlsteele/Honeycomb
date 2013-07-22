@@ -1,4 +1,5 @@
 uuid = require 'node-uuid'
+logger = require './logger'
 
 class Pod
   constructor: ->
@@ -7,6 +8,6 @@ class Pod
 
   recv_msg: (msg) ->
     @messages.push msg
-    console.log "pod #{@pod_id} received message '#{msg}'"
+    logger.debug "pod #{@pod_id} received message '#{msg}'"
 
 module.exports = Pod

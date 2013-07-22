@@ -93,9 +93,6 @@ describe 'HTTPForeignNode', ->
     waitsFor => latch
     runs =>
       ln.server.close()
-      console.log "pods_info: #{fn.pods_info}"
-      console.log "pods_info: #{pod.pod_id}"
-      console.log "pods_info: #{fn.pods_info[pod.pod_id]}"
       expect(fn.pods_info[pod.pod_id]).toBeDefined()
 
   it 'can tell the target to msg a pod.', ->

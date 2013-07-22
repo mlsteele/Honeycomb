@@ -1,11 +1,10 @@
-# netbase.coffee
-#
 # Distributed network message passing.
 # Messages are not guaranteed delivery.
 
 # uuid = require 'node-uuid'
 http = require 'http'
 {plantTimeout} = require './helpers'
+logger = require './logger'
 
 
 class LocalNode
@@ -27,18 +26,18 @@ class LocalNode
     # search in this node
     local_pod = (p for p in @pods when p.pod_id is pod_id)[0]
     if local_pod
-      console.log "found pod_id in local node"
+      logger.debug "found pod_id in local node"
       return local_pod.recv_msg msg
 
     # search in foreign nodes
     for foreign_node in @foreign_nodes
       foreign_pod_id = (fp_id for fp_id of foreign_node.pods_info when fp_id is pod_id)[0]
       if foreign_pod_id
-        console.log "found pod_id in foreign node"
+        logger.debug "found pod_id in foreign node"
         # only try the first match
         return foreign_node.msg_pod foreign_pod_id, msg
 
-    console.warn "could not pass message to #{pod_id}."
+    logger.warn "could not pass message to #{pod_id}."
 
 
 # representation of an external node

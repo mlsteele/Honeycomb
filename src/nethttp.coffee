@@ -1,6 +1,7 @@
 http = require 'http'
 express = require 'express'
 {LocalNode, ForeignNode} = require './netbase'
+logger = require './logger'
 
 class HTTPLocalNode extends LocalNode
   # * `cb` is called after the server initializes.
@@ -52,8 +53,6 @@ class HTTPLocalNode extends LocalNode
             socket.write "'add' not implemented.\n"
           else if cmd.match /msg/
             match = cmd.match /msg (.*) (.*)/
-            console.log cmd
-            console.log match
             [x, pod_id, msg] = match
             response = "sending to #{pod_id} message: '#{msg}'"
             @msg_pod pod_id, msg
@@ -109,16 +108,16 @@ class HTTPForeignNode extends ForeignNode
       method: 'POST'
 
     request = http.request options, (res) ->
-      console.log "recvd response after POSTing to /msg_pod"
-      console.log "STATUS: " + res.statusCode
-      console.log "HEADERS: " + JSON.stringify(res.headers)
+      logger.debug "recvd response after POSTing to /msg_pod"
+      logger.debug "STATUS: " + res.statusCode
+      logger.debug "HEADERS: " + JSON.stringify(res.headers)
       # res.setEncoding 'utf8'
       res.on "data", (chunk) ->
-        console.log "BODY: " + chunk
+        logger.debug "BODY: " + chunk
 
     request.on 'error', (e) ->
-      console.warn "problem with POSTing to /msg_pod"
-      console.warn "#{e.message}"
+      logger.error "problem with POSTing to /msg_pod"
+      logger.error "#{e.message}"
 
     request.end msg
 
@@ -132,9 +131,9 @@ class HTTPForeignNode extends ForeignNode
       method: 'GET'
 
     request = http.request options, (res) =>
-      console.log "recvd response after GETting to /internode/pods_info"
-      console.log "STATUS: " + res.statusCode
-      console.log "HEADERS: " + JSON.stringify(res.headers)
+      logger.debug "recvd response after GETting to /internode/pods_info"
+      logger.debug "STATUS: " + res.statusCode
+      logger.debug "HEADERS: " + JSON.stringify(res.headers)
       # res.setEncoding 'utf8'
 
       # buffer full response body
@@ -145,8 +144,8 @@ class HTTPForeignNode extends ForeignNode
         cb?()
 
     request.on 'error', (e) ->
-      console.warn "problem with GETting to /internode/pods_info"
-      console.warn "#{e.message}"
+      logger.error "problem with GETting to /internode/pods_info"
+      logger.error "#{e.message}"
 
     request.end()
 
