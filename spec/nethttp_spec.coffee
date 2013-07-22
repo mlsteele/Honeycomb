@@ -95,6 +95,10 @@ describe 'HTTPForeignNode', ->
       ln.server.close()
       expect(fn.pods_info[pod.pod_id]).toBeDefined()
 
+      expected = {}
+      expected[pod.pod_id] = local: true
+      expect(fn.pods_info).toEqual expected
+
   it 'can tell the target to msg a pod.', ->
     ln = new HTTPLocalNode TESTING_PORT, 'localhost'
     fn = new HTTPForeignNode TESTING_PORT, 'localhost'
