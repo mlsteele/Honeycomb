@@ -8,11 +8,13 @@ logger = new winston.Logger
     info: 1
     warn: 2
     error: 3
+    highest: 3
   colors:
     debug: 'cyan'
     info: 'green'
     warn: 'yellow'
     error: 'red'
+    highest: 'blue'
   transports: [
     new winston.transports.Console
       level: 'debug'
