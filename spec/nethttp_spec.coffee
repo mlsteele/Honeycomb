@@ -84,22 +84,25 @@ describe 'HTTPLocalNode', ->
 describe 'HTTPForeignNode', ->
   it 'asks what pods it knows about.', ->
     ln = new HTTPLocalNode TESTING_PORT, 'localhost'
-    fn = new HTTPForeignNode 'localhost', TESTING_PORT
     pod = new Pod
     ln.add_pod pod
+    fn = new HTTPForeignNode 'localhost', TESTING_PORT
 
     latch = false
-    runs => ln.listen => fn.update => latch = true
+    runs => ln.listen => fn.update (error) =>
+      expect(error).toBeNull()
+      latch = true
     waitsFor => latch
     runs =>
       ln.server.close()
+      expect(fn.pods_info).toBeDefined()
       expect(fn.pods_info[pod.pod_id]).toBeDefined()
 
       expected = {}
-      expected[pod.pod_id] = local: true
+      expected[pod.pod_id] = type: 'local'
       expect(fn.pods_info).toEqual expected
 
-  it 'can tell the target to msg a pod.', ->
+  xit 'can tell the target to msg a pod.', ->
     ln = new HTTPLocalNode TESTING_PORT, 'localhost'
     fn = new HTTPForeignNode 'localhost', TESTING_PORT
     pod = new Pod

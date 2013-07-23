@@ -20,6 +20,25 @@ class HTTPLocalNode extends LocalNode
     logger.debug "HTTPLocalNode listening on #{@host}:#{@port}"
     @server.listen @port, @host, cb
 
+  # send a message to the pod.
+  # returns false if the pod could not be found.
+  msg_pod: (pod_id, msg) ->
+    # delegate to superclass, fall back to this implementation
+    return unless (super pod_id, msg) is false
+
+    # search in foreign http nodes
+    foreign_http_nodes = (fn for fn_id, fn of @foreign_nodes when fn instanceof HTTPForeignNode)
+    for fn in foreign_http_nodes
+      for pod_id, pod_info of fn.pods_info
+        logger.debug "found pod_id in HTTPForeignNode with type #{pod_info.type}"
+        if pod_info.type is 'local'
+          # only try the first match
+          return fn.msg_pod pod_id, msg
+
+    logger.error "HTTPLocalNode.msg_pod failed to pass message to pod@#{pod_id}."
+    false
+
+
   # Start a TCP server for issuing a small set of commands to the node.
   # Not tremendously secure.
   listen_repl: (port, host) ->
@@ -75,12 +94,22 @@ class HTTPLocalNode extends LocalNode
     @app.get '/check', (req, res) =>
       res.send 200
 
-    # another asks what this node
-    # knows about pods
-    @app.get '/internode/pods_info', (req, res) =>
-      res_data = {}
+    # Responds with this node's model of the network.
+    # Including pod and foreign node info
+    @app.get '/internode/net_shape', (req, res) =>
+      res_data =
+        # pods_info goes right into ForeignNode.pods_info
+        pods_info: {}
+        foreign_nodes: {}
+
       for pod in @pods
-        res_data[pod.pod_id] = local: true
+        res_data.pods_info[pod.pod_id] =
+          type: 'local'
+
+      for fn in @foreign_nodes when fn instanceof HTTPForeignNode
+        res_data.foreign_nodes[fn.node_id] =
+          host: fn.host
+          port: fn.port
 
       res.json res_data
 
@@ -91,9 +120,14 @@ class HTTPLocalNode extends LocalNode
       foreign_port = req.connection.remotePort
       logger.debug "publish_node request from #{foreign_host}:#{foreign_port}"
 
-      # TODO deduplicate
+      # ensure a foreign entry for the posting node.
       fn = new HTTPForeignNode foreign_host, foreign_port
-      @add_foreign_node fn
+      if fn.node_id of @foreign_nodes
+        fn = @foreign_nodes[fn.node_id]
+      else
+        @add_foreign_node fn
+
+      # ask the node what's new.
       fn.update()
 
       res.send 200
@@ -108,12 +142,13 @@ class HTTPLocalNode extends LocalNode
 # representation of an external node
 class HTTPForeignNode extends ForeignNode
   constructor: (@host, @port) ->
+    super()
     unless @host? and @port?
       throw new Error "Missing host or port argument to constructor."
     unless typeof @port is 'number'
       throw new Error "Bad port #{@port}"
 
-    super()
+    @node_id = "node:http//:#{host}:#{port}"
 
   # send message to foreign pod
   # TODO refactor for nicer request
@@ -143,25 +178,31 @@ class HTTPForeignNode extends ForeignNode
     options =
       hostname: @host
       port: @port
-      path: "/internode/pods_info"
+      path: "/internode/net_shape"
       method: 'GET'
 
     request = http.request options, (res) =>
-      logger.debug "recvd response after GETting to /internode/pods_info"
+      logger.debug "recvd response after GETting to /internode/net_shape"
       logger.debug "STATUS: " + res.statusCode
       logger.debug "HEADERS: " + JSON.stringify(res.headers)
       # res.setEncoding 'utf8'
+
+      if res.statusCode isnt 200
+        logger.error "Received HTTP status code #{res.statusCode}"
+        return cb? new Error "Received HTTP status code #{res.statusCode}"
 
       # buffer full response body
       full_body = ""
       res.on "data", (chunk) -> full_body += chunk
       res.on "end", =>
-        @pods_info = JSON.parse full_body
-        cb?()
+        {pods_info, foreign_nodes} = JSON.parse full_body
+        @pods_info = pods_info
+        cb? null
 
     request.on 'error', (e) ->
-      logger.error "problem with GETting to /internode/pods_info"
+      logger.error "problem with GETting to /internode/net_shape"
       logger.error "#{e.message}"
+      cb? new Error "Error in request."
 
     request.end()
 
