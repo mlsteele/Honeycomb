@@ -1,6 +1,8 @@
 http = require 'http'
+request = require 'request'
 express = require 'express'
 {LocalNode, ForeignNode} = require './netbase'
+{parseHost} = require './helpers'
 logger = require './logger'
 
 class HTTPLocalNode extends LocalNode
@@ -106,7 +108,9 @@ class HTTPLocalNode extends LocalNode
         res_data.pods_info[pod.pod_id] =
           type: 'local'
 
-      for fn in @foreign_nodes when fn instanceof HTTPForeignNode
+      logger.debug "reporting on HTTPForeignNode's"
+      for fn_id, fn of @foreign_nodes when fn instanceof HTTPForeignNode
+        logger.debug "reporting on HTTPForeignNode #{fn.node_id}"
         res_data.foreign_nodes[fn.node_id] =
           host: fn.host
           port: fn.port
@@ -120,11 +124,26 @@ class HTTPLocalNode extends LocalNode
       foreign_port = req.connection.remotePort
       logger.debug "publish_node request from #{foreign_host}:#{foreign_port}"
 
+      console.log req.body
+
+      publisher_port_str = req.body.port
+      unless publisher_port_str?
+        logger.warn "received publish_node request without publisher 'port'"
+        return res.send 500, "missing publisher 'port'"
+
+      publisher_str = "#{foreign_host}:#{publisher_port_str}"
+      publisher = parseHost publisher_str
+      unless publisher?
+        logger.warn "bad foreign host:port #{publisher_str}"
+        return res.send 500, "bad foreign host:port #{publisher_str}"
+
       # ensure a foreign entry for the posting node.
-      fn = new HTTPForeignNode foreign_host, foreign_port
+      fn = new HTTPForeignNode publisher.host, publisher.port
       if fn.node_id of @foreign_nodes
+        logger.debug "already have foreign node #{fn.node_id}"
         fn = @foreign_nodes[fn.node_id]
       else
+        logger.debug "adding foreign node #{fn.node_id}"
         @add_foreign_node fn
 
       # ask the node what's new.
@@ -159,7 +178,7 @@ class HTTPForeignNode extends ForeignNode
       path: "/msg_pod/#{pod_id}"
       method: 'POST'
 
-    request = http.request options, (res) ->
+    req = http.request options, (res) ->
       logger.debug "recvd response after POSTing to /msg_pod"
       logger.debug "STATUS: " + res.statusCode
       logger.debug "HEADERS: " + JSON.stringify(res.headers)
@@ -167,11 +186,11 @@ class HTTPForeignNode extends ForeignNode
       res.on "data", (chunk) ->
         logger.debug "BODY: " + chunk
 
-    request.on 'error', (e) ->
+    req.on 'error', (e) ->
       logger.error "problem with POSTing to /msg_pod"
       logger.error "#{e.message}"
 
-    request.end msg
+    req.end msg
 
   # query the foreign node about foreign pods.
   update: (cb) ->
@@ -181,7 +200,7 @@ class HTTPForeignNode extends ForeignNode
       path: "/internode/net_shape"
       method: 'GET'
 
-    request = http.request options, (res) =>
+    req = http.request options, (res) =>
       logger.debug "recvd response after GETting to /internode/net_shape"
       logger.debug "STATUS: " + res.statusCode
       logger.debug "HEADERS: " + JSON.stringify(res.headers)
@@ -199,32 +218,21 @@ class HTTPForeignNode extends ForeignNode
         @pods_info = pods_info
         cb? null
 
-    request.on 'error', (e) ->
+    req.on 'error', (e) ->
       logger.error "problem with GETting to /internode/net_shape"
       logger.error "#{e.message}"
       cb? new Error "Error in request."
 
-    request.end()
+    req.end()
 
   # publish to the foreign node the existance of this local node
-  publish: ->
-    options =
-      hostname: @host
-      port: @port
-      path: "/internode/publish_node"
-      method: 'POST'
+  publish: (local_node) ->
+    unless local_node?.port?
+      throw new Error "local_node missing port."
 
-    request = http.request options, (res) =>
-      logger.debug "recvd response after POSTing to /internode/publish_node"
-      logger.debug "STATUS: " + res.statusCode
-      logger.debug "HEADERS: " + JSON.stringify(res.headers)
-      # res.setEncoding 'utf8'
-
-    request.on 'error', (e) ->
-      logger.error "problem with POSTting to /internode/publish_node"
-      logger.error "#{e.message}"
-
-    request.end()
+    request.post "http://#{@host}:#{@port}/internode/publish_node",
+      form: port: local_node.port,
+      (error, response, body) ->
 
 
 module.exports =

@@ -25,14 +25,17 @@ unless which in ['a', 'b', 'c', 'd']
   process.exit(0)
 
 pod = new Pod
-ln = new HTTPLocalNode PORTS[which], 'localhost'
-ln.add_pod pod
-ln.listen ->
-b_node = new HTTPForeignNode 'localhost', PORTS['b']
-ln.add_foreign_node b_node
-b_node.update()
-
 if which is 'a'
   podview = new HTTPPodView pod
   podview.listen POD_PORT, 'localhost'
   podview.attach_node ln
+
+ln = new HTTPLocalNode PORTS[which], 'localhost'
+ln.add_pod pod
+ln.listen ->
+
+unless which is 'b'
+  b_node = new HTTPForeignNode 'localhost', PORTS['b']
+  ln.add_foreign_node b_node
+  b_node.update()
+  b_node.publish ln
