@@ -233,6 +233,9 @@ class HTTPForeignNode extends ForeignNode
     request.post "http://#{@host}:#{@port}/internode/publish_node",
       form: port: local_node.port,
       (error, response, body) ->
+        if error isnt null
+          logger.error "http problem publishing node"
+          logger.error error
 
 
 module.exports =
