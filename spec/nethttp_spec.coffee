@@ -1,4 +1,5 @@
 http = require 'http'
+request = require 'request'
 Pod = require '../src/pod'
 {HTTPLocalNode, HTTPForeignNode} = require '../src/nethttp'
 
@@ -45,7 +46,7 @@ describe 'HTTPLocalNode', ->
 
         @ln.listen =>
           req = http.request
-            host: 'localhost'
+            hostname: 'localhost'
             port: @port
             path: '/check'
             method: 'GET'
@@ -56,23 +57,26 @@ describe 'HTTPLocalNode', ->
 
       runs => @ln.server.close()
 
-    it 'and receives a requests to send messages to pods', ->
+    it 'and receives a request to send messages to pods', ->
       latch = false
 
       spyOn @ln, 'msg_pod'
 
       runs =>
         @ln.server.on 'request', (req, res) =>
-          latch = true
+          expect(req.url).toEqual "/msg_pod/#{@pod.pod_id}"
+          console.log req.url
 
         @ln.listen =>
-          req = http.request
-            host: 'localhost'
-            port: @port
-            path: "/msg_pod/#{@pod.pod_id}"
-            method: 'POST'
-
-          req.end 'test message'
+          request.post "http://localhost:#{@port}/msg_pod/#{@pod.pod_id}",
+            form: msg: 'test message',
+            (error, res, body) =>
+              if error isnt null then @fail()
+              if res.statusCode isnt 200
+                console.log res.statusCode
+                console.log body
+                @fail()
+              latch = true
 
       waitsFor => latch
 
@@ -102,7 +106,7 @@ describe 'HTTPForeignNode', ->
       expected[pod.pod_id] = type: 'local'
       expect(fn.pods_info).toEqual expected
 
-  xit 'can tell the target to msg a pod.', ->
+  it 'can tell the target to msg a pod.', ->
     ln = new HTTPLocalNode TESTING_PORT, 'localhost'
     fn = new HTTPForeignNode 'localhost', TESTING_PORT
     pod = new Pod
