@@ -14,7 +14,6 @@ logger = new winston.Logger
     info: 'green'
     warn: 'yellow'
     error: 'red'
-    highest: 'blue'
   transports: [
     new winston.transports.Console
       level: 'debug'

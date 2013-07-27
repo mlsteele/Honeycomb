@@ -4,7 +4,6 @@
 
 http = require 'http'
 uuid = require 'node-uuid'
-{plantTimeout} = require './helpers'
 logger = require './logger'
 
 

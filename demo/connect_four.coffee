@@ -33,9 +33,5 @@ if which is 'a'
 ln = new HTTPLocalNode PORTS[which], 'localhost'
 ln.add_pod pod
 ln.listen ->
-
-unless which is 'b'
-  b_node = new HTTPForeignNode 'localhost', PORTS['b']
-  ln.add_foreign_node b_node
-  b_node.update()
-  b_node.publish ln
+  unless which is 'b'
+    ln.discover_node 'localhost', PORTS['b'], yes

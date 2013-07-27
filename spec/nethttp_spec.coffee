@@ -90,7 +90,7 @@ describe 'HTTPForeignNode', ->
     ln = new HTTPLocalNode TESTING_PORT, 'localhost'
     pod = new Pod
     ln.add_pod pod
-    fn = new HTTPForeignNode 'localhost', TESTING_PORT
+    fn = new HTTPForeignNode 'localhost', TESTING_PORT, ln
 
     latch = false
     runs => ln.listen => fn.update (error) =>
@@ -108,7 +108,7 @@ describe 'HTTPForeignNode', ->
 
   it 'can tell the target to msg a pod.', ->
     ln = new HTTPLocalNode TESTING_PORT, 'localhost'
-    fn = new HTTPForeignNode 'localhost', TESTING_PORT
+    fn = new HTTPForeignNode 'localhost', TESTING_PORT, ln
     pod = new Pod
     ln.add_pod pod
     fn.pods_info[pod.pod_id] = local: true

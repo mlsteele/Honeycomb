@@ -1,8 +1,9 @@
 http = require 'http'
 request = require 'request'
 express = require 'express'
+make_slot = require 'callback-slot'
 {LocalNode, ForeignNode} = require './netbase'
-{parseHost} = require './helpers'
+{parseHost, plantInterval} = require './helpers'
 logger = require './logger'
 
 class HTTPLocalNode extends LocalNode
@@ -40,6 +41,20 @@ class HTTPLocalNode extends LocalNode
     logger.error "HTTPLocalNode.msg_pod failed to pass message to pod@#{pod_id}."
     false
 
+  # called when discovering a (possibly new) foreign node address.
+  # * `poll` is a boolean determining whether to begin
+  #   polling the discovered node.
+  discover_node: (hostname, port, poll) ->
+    fn = new HTTPForeignNode hostname, port, this
+    if @foreign_nodes[fn.node_id]?
+      logger.debug "rediscovered node #{fn.node_id}"
+      return
+    else
+      logger.debug "adding new node #{fn.node_id}"
+      @add_foreign_node fn
+      fn.publish this
+      fn.update()
+      fn.poll poll, this
 
   # Start a TCP server for issuing a small set of commands to the node.
   # Not tremendously secure.
@@ -101,7 +116,7 @@ class HTTPLocalNode extends LocalNode
         pods_info: {}
         foreign_nodes: {}
 
-      # TODO send foreign pods
+      # TODO should this send foreign pods?
       for pod in @pods
         res_data.pods_info[pod.pod_id] =
           type: 'local'
@@ -121,7 +136,7 @@ class HTTPLocalNode extends LocalNode
       request_port = req.connection.remotePort
 
       logger.debug "publish_node request from #{request_hostname}:#{request_port}"
-      logger.debug req.body
+      logger.debug "request body #{JSON.stringify req.body}"
 
       publisher_port_str = req.body.port
       unless publisher_port_str?
@@ -133,20 +148,9 @@ class HTTPLocalNode extends LocalNode
       unless publisher?
         logger.warn "bad foreign hostname:port #{publisher_str}"
         return res.send 500, "bad foreign hostname:port #{publisher_str}"
+      logger.debug "published host #{publisher.hostname}:#{publisher.port}"
 
-      # get or create a foreign entry for the posting node.
-      # TODO this logic should be in @add_or_create_foreign_node
-      fn = new HTTPForeignNode publisher.hostname, publisher.port
-      if fn.node_id of @foreign_nodes
-        logger.debug "already have foreign node #{fn.node_id}"
-        fn = @foreign_nodes[fn.node_id]
-      else
-        logger.debug "adding foreign node #{fn.node_id}"
-        @add_foreign_node fn
-
-      # ask the node what's new.
-      # TODO this logic should be in @on_discover_node
-      fn.update()
+      @discover_node publisher.hostname, publisher.port, yes
 
       res.send 200, "thanks for the publish."
 
@@ -163,14 +167,19 @@ class HTTPLocalNode extends LocalNode
 
 # representation of an external node
 class HTTPForeignNode extends ForeignNode
-  constructor: (@hostname, @port) ->
+  constructor: (@hostname, @port, @local_node) ->
     super()
-    unless @hostname? and @port?
-      throw new Error "Missing host or port argument to constructor."
+    unless @hostname?
+      throw new Error "Missing hostname argument to constructor."
     unless typeof @port is 'number'
       throw new Error "Bad port #{@port}"
+    unless @local_node instanceof HTTPLocalNode
+      throw new Error "Missing local node reference"
 
-    @node_id = "node:http//:#{@hostname}:#{@port}"
+    @node_id = "node:http://#{@hostname}:#{@port}"
+
+    @poll_slot = make_slot()
+    @poll_interval_id = undefined
 
   # send message to foreign pod
   # TODO refactor for nicer request
@@ -181,32 +190,62 @@ class HTTPForeignNode extends ForeignNode
         if error isnt null
           logger.error "http error after msg_pod"
           logger.error error
+          return
 
         if res.statusCode isnt 200
           logger.error "http status code #{res.statusCode} received after msg_pod"
           logger.error body
+          return
 
         logger.debug "successful response to http msg_pod"
 
+  # Enable or disable update polling.
+  # When polling is enabled, the `ForeignNode` will periodically
+  # poll for net_shape updates as well as publish to foreign nodes.
+  # * `enable` is a boolean determing whether to enable polling
+  # * `local_node` is the `HTTPLocalNode` to publish and
+  #   tell about newly discovered nodes.
+  poll: (enable) ->
+    POLL_INTERVAL_MS = 10 * 1000
+
+    # stop execution of existing poll
+    clearInterval @poll_interval_id
+    @poll_slot.clear()
+
+    if enable
+      # register new poll into slot and start timer
+      @poll_interval_id = plantInterval POLL_INTERVAL_MS, @poll_slot =>
+        @publish @local_node
+        @update()
+
   # query the foreign node about the net_shape.
+  # * `cb` is a callback which is fired on response.
   update: (cb) ->
     url = "http://#{@hostname}:#{@port}/internode/net_shape"
     request.get url, (error, res, body) =>
-        if error isnt null
-          logger.error "http error after querying net_shape"
-          logger.error error
+      if error isnt null
+        logger.error "http error after querying net_shape"
+        logger.error error
+        cb? error
+        return
 
-        if res.statusCode isnt 200
-          logger.error "http status code #{res.statusCode} received after querying net_shape"
-          logger.error body
+      if res.statusCode isnt 200
+        logger.error "http status code #{res.statusCode} received after querying net_shape"
+        logger.error body
+        cb? new Error res.statusCode
+        return
 
-        logger.debug "successful response to querying net_shape"
-        logger.debug body
+      logger.debug "successful response to querying net_shape"
+      logger.debug body
+      parsed_body = JSON.parse body
+      {pods_info, foreign_nodes} = JSON.parse body
 
-        parsed_body = JSON.parse body
-        {pods_info, foreign_nodes} = JSON.parse body
-        @pods_info = pods_info
-        cb? null
+      @pods_info = pods_info
+
+      for node_id, {hostname, port} of foreign_nodes
+        @local_node.discover_node hostname, port
+
+      cb? null
 
   # publish to the foreign node the existance of this local node
   publish: (local_node) ->
@@ -219,10 +258,12 @@ class HTTPForeignNode extends ForeignNode
         if error isnt null
           logger.error "http error after publishing"
           logger.error error
+          return
 
         if res.statusCode isnt 200
           logger.error "http status code #{res.statusCode} received after publishing"
           logger.error body
+          return
 
         logger.debug "successful publish"
 
