@@ -4,6 +4,10 @@ logger = require './logger'
 
 class HTTPPodView
   constructor: (@pod) ->
+    @messages = []
+    @pod.on 'recv_msg', (msg) =>
+      @messages.push msg
+
     @_setup_app()
     @server = http.createServer @app
 
@@ -36,12 +40,12 @@ class HTTPPodView
 
     @app.get '/messages', (req, res) =>
       html = "<h1>/messages</h1>"
-      if @pod.messages.length
+      if @messages.length
         html += "Here are your messages:"
       else
         html += "You have no messages. :("
       html += "<br>"
-      for msg in @pod.messages
+      for msg in @messages
         html += "<p>#{msg}</p>"
       res.send html
 
