@@ -1,27 +1,30 @@
 {
   "name": "Aspora",
   "version": "0.0.0",
-  "description": "Distributed social network where you own your information.",
-  "main": "main.coffee",
+  "description": "Distributed social network.",
+  "main": "index.js",
   "directories": {
+    "doc": "docs",
     "test": "test"
   },
   "dependencies": {
+    "callback-slot": "~0.0.0",
     "express": "~3.3.4",
-    "jasmine-node": "~1.10.2",
+    "handlebars": "~1.0.12",
     "node-uuid": "~1.4.0",
+    "request": "~2.23.0",
     "winston": "~0.7.2"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "docco": "~0.6.2",
+    "jasmine-node": "~1.10.2"
+  },
   "scripts": {
-    "test": "jasmine-node --coffee spec/"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": {
-    "type": "git",
-    "url": "notyet"
-  },
-  "author": "Miles Steele",
-  "license": "free",
-  "gitHead": "71a81c2a923fd3367ec689867ed1b6fefad5624a",
-  "readmeFilename": "README.md"
+  "repository": "",
+  "author": "Miles Steele <miles@milessteele.com>",
+  "license": "Open",
+  "readmeFilename": "README.md",
+  "gitHead": "1785412312502db24d237d329ba7254d282c75f1"
 }
