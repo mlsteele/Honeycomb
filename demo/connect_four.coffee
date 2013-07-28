@@ -2,15 +2,18 @@ Pod = require '../src/pod'
 {HTTPLocalNode, HTTPForeignNode} = require '../src/nethttp'
 {HTTPPodView} = require '../src/podview'
 
-# A has the pod.
-# B is the hub.
+# A is the hub.
 
-POD_PORT = 7441
+POD_PORTS =
+  a: 7301
+  b: 7302
+  c: 7303
+  d: 7304
 PORTS =
-  a: 7443
-  b: 7445
-  c: 7446
-  d: 7447
+  a: 7201
+  b: 7202
+  c: 7203
+  d: 7204
 
 which = process.argv[2]
 
@@ -24,14 +27,17 @@ unless which in ['a', 'b', 'c', 'd']
   """
   process.exit(0)
 
-pod = new Pod
-if which is 'a'
-  podview = new HTTPPodView pod
-  podview.listen POD_PORT, 'localhost'
-  podview.attach_node ln
-
+# create local noe
 ln = new HTTPLocalNode PORTS[which], 'localhost'
+
+# create pod
+pod = new Pod
+podview = new HTTPPodView pod
+podview.listen POD_PORTS[which], 'localhost'
+podview.attach_node ln
+
 ln.add_pod pod
 ln.listen ->
-  unless which is 'b'
-    ln.discover_node 'localhost', PORTS['b'], yes
+  # initial knowledge of hug at A
+  unless which is 'a'
+    ln.discover_node 'localhost', PORTS['a'], yes
