@@ -244,7 +244,7 @@ class HTTPForeignNode extends ForeignNode
       @pods_info = pods_info
 
       for node_id, {hostname, port} of foreign_nodes
-        @local_node.discover_node hostname, port
+        @local_node.discover_node hostname, port, yes
 
       cb? null
 

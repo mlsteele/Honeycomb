@@ -9,6 +9,12 @@ POD_PORTS =
   b: 7302
   c: 7303
   d: 7304
+# TODO remove hacked pod id persistences
+POD_IDS =
+  a: 'pod:1265e0e1-c5ed-4dd3-a568-2e65f960d7bd'
+  b: 'pod:073b7d26-5148-453a-8a09-98bcf641fdd1'
+  c: 'pod:28bf2864-ebf4-46d7-b4e6-afb88987fec3'
+  d: 'pod:24ee79db-af9a-4048-9048-d2de167264e1'
 PORTS =
   a: 7201
   b: 7202
@@ -32,6 +38,8 @@ ln = new HTTPLocalNode PORTS[which], 'localhost'
 
 # create pod
 pod = new Pod
+# HACK
+pod.pod_id = POD_IDS[which]
 podview = new HTTPPodView pod
 podview.listen POD_PORTS[which], 'localhost'
 podview.attach_node ln
