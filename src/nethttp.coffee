@@ -32,13 +32,14 @@ class HTTPLocalNode extends LocalNode
     # search in foreign http nodes
     foreign_http_nodes = (fn for fn_id, fn of @foreign_nodes when fn instanceof HTTPForeignNode)
     for fn in foreign_http_nodes
-      for pod_id, pod_info of fn.pods_info
-        logger.debug "found pod_id in HTTPForeignNode with type #{pod_info.type}"
-        if pod_info.type is 'local'
-          # only try the first match
-          return fn.msg_pod pod_id, msg
+      for f_pod_id, pod_info of fn.pods_info
+        if f_pod_id is pod_id
+          logger.debug "found pod_id in HTTPForeignNode with type #{pod_info.type}"
+          if pod_info.type is 'local'
+            # only try the first match
+            return fn.msg_pod pod_id, msg
 
-    logger.error "HTTPLocalNode.msg_pod failed to pass message to pod@#{pod_id}."
+    logger.warn "HTTPLocalNode.msg_pod failed to pass message to pod@#{pod_id}."
     false
 
   # called when discovering a (possibly new) foreign node address.
