@@ -1,6 +1,6 @@
-Aspora
+Honeycomb
 =======
 
-The social networks where you control your information.
+A social network where you control your information.
 
 Modeled after Diaspora.

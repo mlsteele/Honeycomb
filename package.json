@@ -1,5 +1,5 @@
 {
-  "name": "Aspora",
+  "name": "Honeycomb",
   "version": "0.0.0",
   "description": "Distributed social network.",
   "main": "index.js",
@@ -22,9 +22,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mlsteele/Honeycomb.git"
+  },
   "author": "Miles Steele <miles@milessteele.com>",
-  "license": "Open",
+  "license": "TBD",
   "readmeFilename": "README.md",
   "gitHead": "1785412312502db24d237d329ba7254d282c75f1"
 }
