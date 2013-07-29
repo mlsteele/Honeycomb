@@ -1,8 +1,11 @@
 http = require 'http'
 express = require 'express'
 handlebars = require 'handlebars'
+{JSONFile} = require './persistence'
 {plantInterval} = require './helpers'
 logger = require './logger'
+
+ENABLE_PERSISTENCE = yes
 
 class HTTPPodView
   constructor: (@pod) ->
@@ -21,9 +24,20 @@ class HTTPPodView
         return
 
       if msg_obj.type is 'pod_ping'
+        @discover_pod msg_obj.sender.pod_id
         @known_pods[msg_obj.sender.pod_id] = (new Date).getTime()
         for other_pod_id of msg_obj.others
           @discover_pod other_pod_id
+
+    if ENABLE_PERSISTENCE
+      @podfile = new JSONFile "data/pods/know_pods:#{@pod.pod_id}.json"
+      @podfile.load (error, obj) =>
+        unless error is null
+          logger.error error.message
+          return
+        for pod_id of obj.known_pods
+          @discover_pod pod_id
+
 
     # TODO make it possible to stop polling
     POD_PING_INTERVAL = 3 * 1000
@@ -52,8 +66,20 @@ class HTTPPodView
       logger.debug "HTTPPodView listening on #{@host}:#{@port}"
 
   discover_pod: (pod_id) ->
-    unless pod_id is @pod.pod_id
-      @known_pods[pod_id] ?= null
+    if pod_id is @pod.pod_id
+      return
+
+    # save pod
+    @known_pods[pod_id] ?= null
+
+    if ENABLE_PERSISTENCE
+      save_data = known_pods: {}
+      for pod_id of @known_pods
+        save_data.known_pods[pod_id] = null
+      @podfile.save save_data, (error) ->
+        unless error is null
+          logger.error error.message
+          return
 
   _setup_app: ->
     @app = express()
