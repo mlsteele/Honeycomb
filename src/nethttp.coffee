@@ -3,8 +3,11 @@ request = require 'request'
 express = require 'express'
 make_slot = require 'callback-slot'
 {LocalNode, ForeignNode} = require './netbase'
+{JSONFile} = require './persistence'
 {parseHost, plantInterval} = require './helpers'
 logger = require './logger'
+
+ENABLE_PERSISTENCE = yes
 
 class HTTPLocalNode extends LocalNode
   # * `cb` is called after the server initializes.
@@ -16,6 +19,16 @@ class HTTPLocalNode extends LocalNode
 
     super()
 
+    if ENABLE_PERSISTENCE
+      @netfile = new JSONFile "data/net/#{@hostname}:#{@port}.json"
+      @netfile.load (error, obj) =>
+        unless error is null
+          logger.error error.message
+          return
+        for node_id, {hostname, port} of obj.foreign_nodes
+          @discover_node hostname, port, yes
+
+    # start http server
     @_setup_app()
     @server = http.createServer @app
 
@@ -56,6 +69,21 @@ class HTTPLocalNode extends LocalNode
       fn.publish this
       fn.update()
       fn.poll poll, this
+
+      if ENABLE_PERSISTENCE
+        save_data = foreign_nodes: {}
+
+        # format foreign http nodes
+        for node_id, foreign_node of @foreign_nodes
+          if foreign_node instanceof HTTPForeignNode
+            save_data.foreign_nodes[node_id] =
+              hostname: foreign_node.hostname
+              port: foreign_node.port
+
+        @netfile.save save_data, (error) ->
+          unless error is null
+            logger.error error.message
+            return
 
   # Start a TCP server for issuing a small set of commands to the node.
   # Not tremendously secure.
