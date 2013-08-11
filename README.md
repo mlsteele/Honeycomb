@@ -1,5 +1,6 @@
 Honeycomb
 =======
+[![Build Status](https://travis-ci.org/mlsteele/Honeycomb.png)](https://travis-ci.org/mlsteele/Honeycomb)
 
 A social network where you control your information.
 Honeycomb is built on a distributed model.
