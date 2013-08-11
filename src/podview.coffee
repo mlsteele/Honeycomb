@@ -49,8 +49,7 @@ class HTTPPodView
           type: 'pod_ping'
           sender: pod_id: @pod.pod_id
           others: @known_pods
-    # TODO what's wrong with this unref?
-    # pod_ping_interval_id.unref()
+    pod_ping_interval_id.unref()
 
     @_setup_app()
     @server = http.createServer @app
