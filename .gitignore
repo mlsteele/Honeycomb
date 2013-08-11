@@ -1,5 +1,5 @@
 .DS_Store
 docs/
 
-node_modules/docco/
-node_modules/.bin/docco
+*.sublime-project
+*.sublime-workspace
