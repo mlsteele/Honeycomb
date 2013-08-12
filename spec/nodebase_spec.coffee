@@ -1,5 +1,5 @@
 Pod = require '../src/pod'
-{LocalNode, ForeignNode, LocalForeignNode} = require '../src/netbase'
+{LocalNode, ForeignNode, LocalForeignNode} = require '../src/nodebase'
 
 describe 'LocalNode', ->
   class DummyNode extends ForeignNode
