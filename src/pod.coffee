@@ -1,6 +1,6 @@
-{EventEmitter} = require 'events'
-uuid = require 'node-uuid'
 logger = require './logger'
+uuid = require 'node-uuid'
+{EventEmitter} = require 'events'
 
 class Pod extends EventEmitter
   constructor: ->

@@ -1,88 +1,66 @@
-# Distributed network message passing.
-#
+# Distributed message passing network.
 # Messages are not guaranteed delivery.
+# Messages may be delivered multiple times through multiple paths.
+#
+# This file abstract base classes with common functionality among distribution
+# backends.
 
-http = require 'http'
-uuid = require 'node-uuid'
 logger = require './logger'
 
 
-class LocalNode
-  constructor: ->
-    @pods = []
-    # list of ForeignNode's
-    @foreign_nodes = {}
+# Local node handle.
+# Abstract base class.
+class BaseLocalNode
+  constructor: (@node_id="node|?|uuid.v4()") ->
+    # list of `Pod`s
+    @pods = {}
+    # list of instances derived from `BaseExtNode`
+    @ext_nodes = {}
 
   add_pod: (pod) ->
-    @pods.push pod
+    unless pod.pod_id?
+      throw new Error "pod missing pod_id"
+    @pods[pod.pod_id] = pod
 
-  add_foreign_node: (foreign_node) ->
-    unless foreign_node.node_id?
-      throw new Error "foreign_node missing node_id"
-    @foreign_nodes[foreign_node.node_id] = foreign_node
+  add_ext_node: (ext_node) ->
+    unless ext_node.node_id?
+      throw new Error "ext_node missing node_id"
+    @ext_nodes[ext_node.node_id] = ext_node
 
-  # send a message to the pod.
-  # returns false if the pod could not be found.
+  # Send a message to the `Pod` with `pod_id`.
+  # Returns `false` if the `Pod` could not be found.
   msg_pod: (pod_id, msg) ->
     # search in this node
-    local_pod = (p for p in @pods when p.pod_id is pod_id)[0]
-    if local_pod
+    local_pod = @pods[pod_id]
+    if local_pod?
       logger.debug "found pod_id in local node"
-      return local_pod.recv_msg msg
+      local_pod.recv_msg msg
+    else
+      logger.warn "BaseLocalNode.msg_pod failed to pass message to pod@#{pod_id}"
+      return false
 
-    logger.warn "LocalNode.msg_pod failed to pass message to pod@#{pod_id}"
-    false
 
+# Representation of an external node.
+# Abstract base class.
+class BaseExtNode
+  constructor: (@node_id) ->
+    unless "node_id"?
+      throw new Error "BaseExtNode missing node_id"
 
-# representation of an external node
-# abstract base class
-class ForeignNode
-  constructor: ->
-    # @pods_info is a mapping from pod_id's to information on how the pod is related
-    # to this node. Each entry has a 'type' attribute describing the connection.
-    #
-    # Example illustrating format:
-    #
-    #     @pods_info = {
-    #       'pod_id_1':
-    #         # pod connected locally to the node
-    #         type: 'local'
-    #       'pod_id_2':
-    #         # pod connected through another node via http
-    #         type: 'http'
-    #         # number of hops away, minimum 1 (0 would be local)
-    #         # `hops` is optional.
-    #         hops: 1
-    #     }
+    # @pods_relation is a mapping from `pod_id`s to information
+    # on how the pod is related to this node. Each entry has
+    # a 'type' attribute describing the type of connection.
+    @pods_relation = {}
 
-    @node_id = "node:dummy:#{uuid.v4()}"
-    @pods_info = {}
-
+  # Send a message through the external node
   msg_pod: (pod_id, msg) ->
-    throw new Error "ForeignNode.msg_pod must be overridden."
+    throw new Error "BaseExtNode.msg_pod must be overridden."
 
-  # add_pod_id: (pod_id) ->
-  #   throw new Error "ForeignNode.add_pod_id must be overridden."
-
-  # update the representation of what the foreign node knows.
+  # Update the representation of what the external node knows.
+  # Usually will involve fetching from a remote.
   update: ->
-    throw new Error "ForeignNode.update must be overridden."
-
-
-# local foreign node
-# for mocking an external node from a LocalNode
-class LocalForeignNode extends ForeignNode
-  constructor: (@local_node) ->
-    super()
-
-  msg_pod: (pod_id, msg) ->
-    @local_node.msg_pod pod_id, msg
-
-  add_local_pod_ids: ->
-    (@add_pod_id p.pod_id) for p in @local_node.pods
-
+    throw new Error "BaseExtNode.update must be overridden."
 
 module.exports =
-  LocalNode: LocalNode
-  ForeignNode: ForeignNode
-  LocalForeignNode: LocalForeignNode
+  BaseLocalNode: LocalNode
+  BaseExtNode: ExtNode

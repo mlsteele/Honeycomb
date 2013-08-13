@@ -1,5 +1,18 @@
 Pod = require '../src/pod'
-{LocalNode, ForeignNode, LocalForeignNode} = require '../src/nodebase'
+{LocalNode, ForeignNode} = require '../src/nodebase'
+
+# local foreign node
+# for mocking an external node from a LocalNode
+class LocalForeignNode extends ForeignNode
+  constructor: (@local_node) ->
+    super()
+
+  msg_pod: (pod_id, msg) ->
+    @local_node.msg_pod pod_id, msg
+
+  add_local_pod_ids: ->
+    (@add_pod_id p.pod_id) for p in @local_node.pods
+
 
 describe 'LocalNode', ->
   class DummyNode extends ForeignNode
