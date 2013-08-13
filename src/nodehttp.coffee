@@ -1,23 +1,29 @@
+# HTTP Nodes
+# Establish a healing mesh network.
+# Does not deal well with NAT (one way connections).
+
 http = require 'http'
 request = require 'request'
 express = require 'express'
 make_slot = require 'callback-slot'
-{LocalNode, ForeignNode} = require './nodebase'
-{JSONFile} = require './persistence'
-{parseHost, plantInterval} = require './helpers'
 logger = require './logger'
+{parseHost, plantInterval} = require './helpers'
+{BaseLocalNode, BaseForeignNode} = require './nodebase'
+{JSONFile} = require './persistence'
 
-ENABLE_PERSISTENCE = yes
+ENABLE_PERSISTENCE = no
 
-class HTTPLocalNode extends LocalNode
-  # * `cb` is called after the server initializes.
-  constructor: (@port, @hostname) ->
+class HTTPLocalNode extends BaseLocalNode
+  # Does not listen until `listen` is called.
+  # * `port` is the port to listen on.
+  # * `hostname` is the hostname to listen from (optional).
+  constructor: ({@hostname, @port}) ->
     unless @port?
-      throw new Error "Missing port argument for constructor."
+      throw new Error "Missing port argument to constructor."
     unless typeof @port is 'number'
-      throw new Error "Bad port #{@port}"
+      throw new Error "Port is not a number (#{@port})"
 
-    super()
+    super "node|http|http://#{@hostname}:#{@port}"
 
     if ENABLE_PERSISTENCE
       @netfile = new JSONFile "data/net/#{@hostname}:#{@port}.json"
@@ -28,7 +34,7 @@ class HTTPLocalNode extends LocalNode
         for node_id, {hostname, port} of obj.foreign_nodes
           @discover_node hostname, port, yes
 
-    # start http server
+    # setup http server
     @_setup_app()
     @server = http.createServer @app
 
@@ -36,24 +42,21 @@ class HTTPLocalNode extends LocalNode
     logger.debug "HTTPLocalNode listening on #{@hostname}:#{@port}"
     @server.listen @port, @hostname, cb
 
-  # send a message to the pod.
-  # returns false if the pod could not be found.
+  # Send a message to the `Pod` with `pod_id`.
+  # Returns `false` if the `Pod` could not be found.
   msg_pod: (pod_id, msg) ->
-    # delegate to superclass, fall back to this implementation
+    # Delegate to superclass, fall back to this
+    # implementation if super cannot find pod.
     return unless (super pod_id, msg) is false
 
-    # search in foreign http nodes
-    foreign_http_nodes = (fn for fn_id, fn of @foreign_nodes when fn instanceof HTTPForeignNode)
-    for fn in foreign_http_nodes
-      for f_pod_id, pod_info of fn.pods_info
-        if f_pod_id is pod_id
-          logger.debug "found pod_id in HTTPForeignNode with type #{pod_info.type}"
-          if pod_info.type is 'local'
-            # only try the first match
-            return fn.msg_pod pod_id, msg
+    # Search through external nodes.
+    for ext_node_id, ext_node of @ext_nodes
+      relation = ext_node.pods_relations[pod_id]
+      if relation?.type is 'http'
+        ext_node.msg_pod pod_id, msg
+        return true
 
-    logger.warn "HTTPLocalNode.msg_pod failed to pass message to pod@#{pod_id}."
-    false
+    return false
 
   # called when discovering a (possibly new) foreign node address.
   # * `poll` is a boolean determining whether to begin
@@ -84,48 +87,6 @@ class HTTPLocalNode extends LocalNode
           unless error is null
             logger.error error.message
             return
-
-  # Start a TCP server for issuing a small set of commands to the node.
-  # Not tremendously secure.
-  listen_repl: (port, hostname) ->
-    net = require 'net'
-    repl = require 'repl'
-
-    repl_server = net.createServer (socket) =>
-      help_text = """
-        \nHTTPLocalNode remote control
-        \nUsage:
-          help                    - display this help
-          info                    - info about this node
-          add IP:PORT             - add a remote http node
-          msg pod_id message body - message a pod\n\n
-      """
-
-      socket.write help_text
-
-      repl.start
-        prompt: "HTTPLocalNode> "
-        input: socket
-        output: socket
-        ignoreUndefined: true
-        eval: (cmd, context, filename, callback) =>
-          response = undefined
-          if cmd.match /help/
-            socket.write help_text
-          else if cmd.match /info/
-            socket.write "this is an HTTPLocalNode at #{@hostname}:#{@port}\n"
-            socket.write "with a pod #{pod.pod_id}\n" for pod in @pods
-          else if cmd.match /add/
-            socket.write "'add' not implemented.\n"
-          else if cmd.match /msg/
-            match = cmd.match /msg (.*) (.*)/
-            [x, pod_id, msg] = match
-            response = "sending to #{pod_id} message: '#{msg}'"
-            @msg_pod pod_id, msg
-            socket.write "ok.\n"
-          callback null, response
-
-    repl_server.listen port, hostname
 
   _setup_app: ->
     @app = express()
