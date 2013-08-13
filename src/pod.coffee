@@ -4,7 +4,7 @@ uuid = require 'node-uuid'
 
 class Pod extends EventEmitter
   constructor: ->
-    @pod_id = "pod:#{uuid.v4()}"
+    @pod_id = "pod|#{uuid.v4()}"
     logger.debug "created pod@#{@pod_id}"
 
   recv_msg: (msg) ->

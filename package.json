@@ -20,8 +20,8 @@
     "jasmine-node": "~1.10.2"
   },
   "scripts": {
-    "test": "./node_modules/.bin/jasmine-node --coffee spec/",
-    "autotest": "./node_modules/.bin/jasmine-node --coffee --autotest spec/"
+    "test": "./node_modules/.bin/jasmine-node --coffee --verbose spec/",
+    "autotest": "./node_modules/.bin/jasmine-node --coffee --verbose --autotest spec/"
   },
   "repository": {
     "type": "git",

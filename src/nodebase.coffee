@@ -44,13 +44,15 @@ class BaseLocalNode
 # Abstract base class.
 class BaseExtNode
   constructor: (@node_id) ->
-    unless "node_id"?
-      throw new Error "BaseExtNode missing node_id"
+    unless typeof @node_id is 'string'
+      throw new Error "BaseExtNode missing node_id (#{@node_id})"
 
-    # @pods_relation is a mapping from `pod_id`s to information
+    # `pods_relations` is a mapping from `pod_id`s to information
     # on how the pod is related to this node. Each entry has
-    # a 'type' attribute describing the type of connection.
-    @pods_relation = {}
+    # a `type` attribute describing the type of connection.
+    # Besides `type`, each node implementation can define
+    # its own relation structure.
+    @pods_relations = {}
 
   # Send a message through the external node
   msg_pod: (pod_id, msg) ->
@@ -62,5 +64,5 @@ class BaseExtNode
     throw new Error "BaseExtNode.update must be overridden."
 
 module.exports =
-  BaseLocalNode: LocalNode
-  BaseExtNode: ExtNode
+  BaseLocalNode: BaseLocalNode
+  BaseExtNode:   BaseExtNode
