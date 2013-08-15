@@ -1,20 +1,23 @@
-# In memory nodes.
-# Minimal working implementation of base nodes.
-# Mosty useless, except for testing locally.
+# TCP node communicating over json-over-tpc.
+# Persistent connections allow for NAT hole-punching.
 #
 # External pod relations have the fields:
-# - `type` is 'mem'
+# - `type` is 'tcp'
 # - `hops` is the number of hops away the pod is.
 #   Currently the maximum stored hops is 0.
 
 logger = require './logger'
 uuid = require 'node-uuid'
+{EventEmitter} = require 'events'
 {BaseLocalNode, BaseExtNode} = require './nodebase'
 
 
-class MemLocalNode extends BaseLocalNode
-  constructor: ->
-    super "node|mem|#{uuid.v4()}"
+class TCPLocalNode extends BaseLocalNode
+  constructor: ({@hostname, @port}) ->
+    unless typeof @port is 'number'
+      throw new Error "Port is not a number (#{@port})"
+
+    super "node|tcp|#{@hostname}:#{@port}"
 
   # Send a message to the `Pod` with `pod_id`.
   # Returns `false` if the `Pod` could not be found.
@@ -26,28 +29,31 @@ class MemLocalNode extends BaseLocalNode
     # Search through external nodes.
     for ext_node_id, ext_node of @ext_nodes
       relation = ext_node.pods_relations[pod_id]
-      if relation?.type is 'mem'
+      if relation?.type is 'tcp'
         ext_node.msg_pod pod_id, msg
         return true
 
     return false
 
 
-class MemExtNode extends BaseExtNode
-  # `ext_local_node` is the node this `MemExtNode` points to.
-  constructor: (@ext_local_node) ->
-    unless typeof @ext_local_node?.msg_pod is 'function'
-      throw new Error "MemExtNode.ext_local_node missing msg_pod function."
-    unless typeof @ext_local_node?.node_id is 'string'
-      throw new Error "MemExtNode.ext_local_node missing node_id."
-    super "node|extmem|#{@ext_local_node.node_id}"
+class TCPExtNode extends BaseExtNode
+  constructor: ({@hostname, @port}) ->
+    unless typeof @port is 'number'
+      throw new Error "Port is not a number (#{@port})"
+    unless typeof @hostname is 'string'
+      throw new Error "Hostname is not a string (#{@hostname})"
+
+    # extend EventEmitter
+    EventEmitter.call this
+
+    super "node|exttcp|#{@hostname}:#{@port}"
 
   msg_pod: (pod_id, msg) ->
-    @ext_local_node.msg_pod pod_id, msg
+    @local_node.msg_pod pod_id, msg
 
   update: ->
     @pods_relations = {}
-    for pod_id of @ext_local_node.pods
+    for pod_id of @local_node.pods
       @pods_relations[pod_id] =
         type: 'mem'
         hops: 0

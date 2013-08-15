@@ -39,7 +39,7 @@ describe "MemExtNode", ->
 
   it "is created with a MemLocalNode.", ->
     en = new MemExtNode @ln
-    expect(en.local_node).toBe @ln
+    expect(en.ext_local_node).toBe @ln
 
   it "tells the local node to message its pod.", ->
     spyOn @ln, 'msg_pod'

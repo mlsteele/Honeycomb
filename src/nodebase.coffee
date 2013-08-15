@@ -11,7 +11,7 @@ logger = require './logger'
 # Local node handle.
 # Abstract base class.
 class BaseLocalNode
-  constructor: (@node_id="node|?|uuid.v4()") ->
+  constructor: (@node_id="node|?|#{uuid.v4()}") ->
     # list of `Pod`s
     @pods = {}
     # list of instances derived from `BaseExtNode`
