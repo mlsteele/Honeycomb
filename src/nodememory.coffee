@@ -46,11 +46,33 @@ class MemExtNode extends BaseExtNode
     @ext_local_node.msg_pod pod_id, msg
 
   update: ->
+    # clear relations
     @pods_relations = {}
+
+    # collect from external direct connections.
     for pod_id of @ext_local_node.pods
       @pods_relations[pod_id] =
         type: 'mem'
-        hops: 0
+        hops: 0 # 0 hops from the external node.
+
+    # collect from externals indirect knowledge.
+    for ext_node_id, ext_node of @ext_local_node.ext_nodes
+      for pod_id, relation of ext_node.pods_relations
+        if relation.type is 'mem'
+
+          unless relation.hops?
+            throw new Error "relation missing hops."
+
+          if pod_id of @pods_relations
+            hops = Math.min @pods_relations[pod_id].hops, relation.hops + 1
+          else
+            hops = relation.hops + 1
+
+          logger.highest hops
+
+          @pods_relations[pod_id] =
+            type: 'mem'
+            hops: hops
 
 
 module.exports =

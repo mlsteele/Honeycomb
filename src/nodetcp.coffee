@@ -36,6 +36,8 @@ class TCPLocalNode extends BaseLocalNode
     return false
 
 
+# `TCPExtNode` also extends `EventEmitter` and emits
+# `msg_pod(pod_id, msg)` when the external socket tells it too.
 class TCPExtNode extends BaseExtNode
   constructor: ({@hostname, @port}) ->
     unless typeof @port is 'number'

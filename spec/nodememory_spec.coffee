@@ -67,13 +67,77 @@ describe "Memory nodes", ->
     @pod = new Pod
     spyOn @pod, 'recv_msg'
 
-    @ext_ln = new MemLocalNode
-    @ext_ln.add_pod @pod
-    @en = new MemExtNode @ext_ln
-    spyOn(@en, 'msg_pod').andCallThrough()
-    @ln = new MemLocalNode
-    @ln.add_ext_node @en
-    @en.update()
-    @ln.msg_pod @pod.pod_id, 'test message 3'
-    expect(@en.msg_pod).toHaveBeenCalledWith @pod.pod_id, 'test message 3'
+    lns = [new MemLocalNode, new MemLocalNode]
+    ens = (new MemExtNode ln for ln in lns)
+
+    lns[1].add_pod @pod
+    spyOn(ens[1], 'msg_pod').andCallThrough()
+    lns[0].add_ext_node ens[1]
+
+    ens.map (en) -> en.update()
+    lns[0].msg_pod @pod.pod_id, 'test message 3'
+
+    expect(ens[1].msg_pod).toHaveBeenCalledWith @pod.pod_id, 'test message 3'
     expect(@pod.recv_msg).toHaveBeenCalledWith 'test message 3'
+
+  it "can pass messages over a hop.", ->
+    @pod = new Pod
+    spyOn @pod, 'recv_msg'
+
+    lns = [new MemLocalNode, new MemLocalNode, new MemLocalNode]
+    ens = (new MemExtNode ln for ln in lns)
+
+    lns[0].add_ext_node ens[1]
+    lns[1].add_ext_node ens[2]
+    lns[2].add_pod @pod
+
+    # update twice so that the information can propogate far enough
+    ens.map (en) -> en.update()
+    ens.map (en) -> en.update()
+    lns[0].msg_pod @pod.pod_id, 'test message 4'
+
+    expect(@pod.recv_msg).toHaveBeenCalledWith 'test message 4'
+
+  it "can pass messages over two hops.", ->
+    @pod = new Pod
+    spyOn @pod, 'recv_msg'
+
+    lns = [new MemLocalNode, new MemLocalNode, new MemLocalNode, new MemLocalNode]
+    ens = (new MemExtNode ln for ln in lns)
+
+    lns[0].add_ext_node ens[1]
+    lns[1].add_ext_node ens[2]
+    lns[2].add_ext_node ens[3]
+    lns[3].add_pod @pod
+
+    # update enough that the information can propogate
+    ens.map (en) -> en.update()
+    ens.map (en) -> en.update()
+    ens.map (en) -> en.update()
+    lns[0].msg_pod @pod.pod_id, 'test message 4'
+
+    expect(@pod.recv_msg).toHaveBeenCalledWith 'test message 4'
+
+  it "do not duplicate ext node representations.", ->
+    @pod = new Pod
+    spyOn @pod, 'recv_msg'
+
+    lns = [new MemLocalNode, new MemLocalNode, new MemLocalNode]
+    ens = (new MemExtNode ln for ln in lns)
+
+    lns[0].add_ext_node ens[1]
+    lns[1].add_ext_node ens[0]
+    lns[1].add_ext_node ens[2]
+    lns[2].add_ext_node ens[1]
+    lns[2].add_pod @pod
+
+    ens.map (en) -> en.update()
+    ens.map (en) -> en.update()
+    ens.map (en) -> en.update()
+    ens.map (en) -> en.update()
+    ens.map (en) -> en.update()
+    ens.map (en) -> en.update()
+
+    expect(ens[0].pods_relations[@pod.pod_id].hops).toBe 2
+    expect(ens[1].pods_relations[@pod.pod_id].hops).toBe 1
+    expect(ens[2].pods_relations[@pod.pod_id].hops).toBe 0
