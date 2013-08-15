@@ -13,7 +13,8 @@
     "handlebars": "~1.0.12",
     "node-uuid": "~1.4.0",
     "request": "~2.23.0",
-    "winston": "~0.7.2"
+    "winston": "~0.7.2",
+    "json-over-tcp": "~0.3.2"
   },
   "devDependencies": {
     "docco": "~0.6.2",
