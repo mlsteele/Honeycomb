@@ -28,6 +28,7 @@ class MemLocalNode extends BaseLocalNode
       relation = ext_node.pods_relations[pod_id]
       if relation?.type is 'mem'
         ext_node.msg_pod pod_id, msg
+        # only try one route
         return true
 
     return false
